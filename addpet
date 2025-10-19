@@ -1,0 +1,344 @@
+import 'dart:ffi';
+import 'dart:math';
+import 'package:flutter/material.dart';
+import 'package:pawconnect/api/api.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:path/path.dart' as path;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pawconnect/dashboard/dashboard.dart';
+
+class AddPetScreen extends StatefulWidget {
+  const AddPetScreen({super.key});
+
+  @override
+  State<AddPetScreen> createState() => _AddPetScreenState();
+}
+
+class _AddPetScreenState extends State<AddPetScreen> {
+  final _formKey = GlobalKey<FormState>();
+
+  final TextEditingController _nameController = TextEditingController();
+  final TextEditingController _breedController = TextEditingController();
+  final TextEditingController _ageController = TextEditingController();
+  final TextEditingController _descriptionController = TextEditingController();
+  final TextEditingController _codeController = TextEditingController();
+
+  String _selectedType = 'Others';
+  String _selectedBreed = 'Others';
+  String _selectedGender = 'Male';
+  String _selectedColor = 'Others';
+
+  bool _isLoading = false;
+
+  File? _selectedImage;
+  String _imageName = '';
+  int userId = 0;
+
+  final ImagePicker _picker = ImagePicker();
+
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _selectedImage = File(image.path);
+        _imageName = path.basename(image.path); 
+      });
+    }
+  }
+
+
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Add Pet"),
+        backgroundColor: Colors.teal,
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildTextField(_nameController, "Pet Name", "Enter pet name"),
+              const SizedBox(height: 16),
+
+              // Dropdown for Type
+              DropdownButtonFormField<String>(
+                value: _selectedType,
+                decoration: _inputDecoration("Pet Type"),
+                items: const [
+                  DropdownMenuItem(value: 'Others', child: Text("Others")),
+                  DropdownMenuItem(value: 'Dog', child: Text("Dog")),
+                  DropdownMenuItem(value: 'Cat', child: Text("Cat")),
+                ],
+                onChanged: (value) {
+                  setState(() => _selectedType = value!);
+                },
+              ),
+              const SizedBox(height: 16),
+
+              DropdownButtonFormField<String>(
+                value: _selectedBreed,
+                decoration: _inputDecoration("Breed Type"),
+                items: const [
+                  DropdownMenuItem(value: 'Others', child: Text("Others")),
+                  DropdownMenuItem(value: 'Chihuahua', child: Text("Chihuahua")),
+                  DropdownMenuItem(value: 'Pomeranian', child: Text("Pomeranian")),
+                  DropdownMenuItem(value: 'Maltese', child: Text("Maltese")),
+                  DropdownMenuItem(value: 'Yorkshire Terrier', child: Text("Yorkshire Terrier")),
+                  DropdownMenuItem(value: 'Pug', child: Text("Pug")),
+                  DropdownMenuItem(value: 'Dachshund', child: Text("Dachshund")),
+                  DropdownMenuItem(value: 'Papillon', child: Text("Papillon")),
+                  DropdownMenuItem(value: 'French Bulldog', child: Text("French Bulldog")),
+                  DropdownMenuItem(value: 'Boston Terrier', child: Text("Boston Terrier")),
+                ],
+                onChanged: (value) {
+                  setState(() => _selectedBreed = value!);
+                },
+              ),
+              const SizedBox(height: 16),
+
+
+              Row(
+                children: [
+                  Expanded(
+                    flex: 2,
+                    child: _buildTextField(
+                      _ageController,
+                      "Age",
+                      "Enter pet age",
+                      inputType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 3,
+                    child: TextFormField(
+                      controller: _codeController,
+                      readOnly: true,
+                      decoration: _inputDecoration("Generated Code")
+                          .copyWith(suffixIcon: IconButton(
+                        icon: const Icon(Icons.refresh),
+                        tooltip: "Generate Code",
+                        onPressed: _generateRandomCode,
+                      )),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              DropdownButtonFormField<String>(
+                value: _selectedGender,
+                decoration: _inputDecoration("Gender Type"),
+                items: const [
+                  DropdownMenuItem(value: 'Male', child: Text("Male")),
+                  DropdownMenuItem(value: 'Female', child: Text("Female")),
+                ],
+                onChanged: (value) {
+                  setState(() => _selectedGender = value!);
+                },
+              ),
+              const SizedBox(height: 16),
+
+
+
+              DropdownButtonFormField<String>(
+                value: _selectedColor,
+                decoration: _inputDecoration("Pet Color"),
+                items: const [
+                  DropdownMenuItem(value: 'Others', child: Text("Others")),
+                  DropdownMenuItem(value: 'Red', child: Text("Red")),
+                  DropdownMenuItem(value: 'Green', child: Text("Green")),
+                  DropdownMenuItem(value: 'White', child: Text("White")),
+                  DropdownMenuItem(value: 'Yellow', child: Text("Yellow")),
+                  DropdownMenuItem(value: 'Brown', child: Text("Brown")),
+                  DropdownMenuItem(value: 'Black', child: Text("Black")),
+                ],
+                onChanged: (value) {
+                  setState(() => _selectedColor = value!);
+                },
+              ),
+              const SizedBox(height: 16),
+
+
+              _buildTextField(
+                _descriptionController,
+                "Description",
+                "Enter pet description",
+                maxLines: 4,
+              ),
+              const SizedBox(height: 24),
+
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      height: 180,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: Colors.grey[200],
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.grey),
+                      ),
+                      child: _selectedImage != null
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(
+                                _selectedImage!,
+                                fit: BoxFit.cover,
+                              ),
+                            )
+                          : Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(Icons.camera_alt, size: 50, color: Colors.grey),
+                                SizedBox(height: 10),
+                                Text('Tap to upload photo',
+                                    style: TextStyle(color: Colors.grey)),
+                              ],
+                            ),
+                    ),
+                  ),
+
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _isLoading
+                    ? null // disable the button while loading
+                    : () async {
+                        setState(() => _isLoading = true);
+                        await _savePet();
+                        if (mounted) setState(() => _isLoading = false);
+                      },
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(Icons.save),
+                label: Text(_isLoading ? "Saving..." : "Save Pet"),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.teal,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  textStyle: const TextStyle(fontSize: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _generateRandomCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = Random();
+    final code = List.generate(6, (index) => chars[random.nextInt(chars.length)]).join();
+    setState(() {
+      _codeController.text = code;
+    });
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, String hint,
+      {TextInputType inputType = TextInputType.text, int maxLines = 1}) {
+    return TextFormField(
+      controller: controller,
+      keyboardType: inputType,
+      maxLines: maxLines,
+      validator: (value) =>
+          (value == null || value.isEmpty) ? '$label is required' : null,
+      decoration: _inputDecoration(label, hint: hint),
+    );
+  }
+
+  InputDecoration _inputDecoration(String label, {String? hint}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      filled: true,
+      fillColor: Colors.grey.shade100,
+    );
+  }
+
+  Future<void> _savePet() async{
+    setState(() => _isLoading = true);
+    final prefs = await SharedPreferences.getInstance();
+     userId = prefs.getInt('user_id') ?? 0;
+    final String userIdStr = userId.toString();
+    
+    if (_formKey.currentState!.validate()) {
+      final petData = {
+        'name': _nameController.text.trim(),
+        'age': _ageController.text.trim(),
+        'description': _descriptionController.text.trim(),
+      };
+          if (_imageName.isEmpty) {
+            setState(() => _isLoading = false);
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Please select an image attachment")),
+            );
+            return;
+          }
+
+          if (_codeController.text.isEmpty) {
+            setState(() => _isLoading = false);
+            if (!mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Generate Pet Tag is required")),
+            );
+            return;
+          }
+
+
+
+        final apiService = ApiService();
+        final data = await apiService.addpet(
+          id: userIdStr,
+          name: _nameController.text.trim(),
+          type: _selectedType,
+          breed: _selectedBreed,
+          age: _ageController.text.trim(),
+          code: _codeController.text.trim(),
+          gender: _selectedGender,
+          color: _selectedColor,
+          image: _imageName,
+          description: _descriptionController.text.trim(),
+        );
+
+        if(data){
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Pet added successfully!")),
+          );
+
+          await Future.delayed(const Duration(seconds: 2));
+          setState(() => _isLoading = false);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          );
+        }else{
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Something Went Wrong, Please try again.")),
+          );
+        }
+
+
+    }
+  }
+  
+}
