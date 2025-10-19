@@ -1,0 +1,174 @@
+<?php
+class UserModel {
+    private $conn;
+    private $table = "login";
+
+    public function __construct($db) {
+        $this->conn = $db;
+    }
+
+    // Check login
+public function checkLogin($username, $password) {
+    $stmt = $this->conn->prepare(
+        "SELECT id, firstname, lastname, email, mobile_number, password 
+         FROM $this->table 
+         WHERE username = :username 
+         LIMIT 1"
+    );
+    $stmt->execute(['username' => $username]);
+    $user = $stmt->fetch(PDO::FETCH_ASSOC); 
+
+    if ($user && password_verify($password, $user['password'])) {
+        unset($user['password']);
+        return [
+            'status' => true,
+            'message' => 'Login successful!',
+            'data' => $user
+        ];
+    }
+
+    return [
+        'status' => false,
+        'message' => 'Invalid username or password.'
+    ];
+}
+
+
+
+public function reg($username, $password, $email, $phone, $fname, $lname) {
+
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+    $stmt = $this->conn->prepare(
+        "INSERT INTO $this->table (username, password, email, mobile_number,firstname, lastname) 
+         VALUES (:username, :password, :email, :phone, :firstname, :lastname)"
+    );
+
+    // Execute
+    $success = $stmt->execute([
+        'username' => $username,
+        'password' => $hashedPassword,
+        'email' => $email,
+        'phone' => $phone,
+        'firstname' => $fname,
+        'lastname' => $lname,
+    ]);
+
+    return $success;
+}
+
+
+
+
+
+public function nfc($nfc_tag)
+{
+    $stmt = $this->conn->prepare("
+        SELECT * FROM pets
+        WHERE nfc_tag = :nfc_tag
+    ");
+
+    $stmt->execute(['nfc_tag' => $nfc_tag]);
+
+    // Fetch the pet record
+    $pet = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return $pet ?: null;
+}
+
+
+
+
+
+public function addpet($id, $name, $type, $breed, $age, $description, $code, $color, $gender, $image) {
+    try {
+        $stmt = $this->conn->prepare(
+            "INSERT INTO pets 
+            (owner_id, name, type, breed, age, description, nfc_tag, color, gender, image) 
+            VALUES 
+            (:id, :name, :type, :breed, :age, :description, :code, :color, :gender, :image)"
+        );
+
+        $success = $stmt->execute([
+            'id' => $id,
+            'name' => $name,
+            'type' => $type,
+            'breed' => $breed,
+            'age' => $age,
+            'description' => $description,
+            'code' => $code,
+            'color' => $color,
+            'gender' => $gender,
+            'image' => $image
+        ]);
+
+        return $success;
+
+    } catch (PDOException $e) {
+        return [
+            'status' => false,
+            'error' => $e->getMessage()
+        ];
+    }
+}
+
+
+
+public function report($id, $pet_name, $description, $image, $date_missing) {
+    try {
+
+        $stmt = $this->conn->prepare(
+            "INSERT INTO report_pet 
+            (owner_id, pet_name, description, image, date_missing) 
+            VALUES 
+            (:id, :pet_name, :description, :image, :date_missing)"
+        );
+
+        $success = $stmt->execute([
+            'id' => $id,
+            'pet_name' => $pet_name,
+            'description' => $description,
+            'image' => $image,
+            'date_missing' => $date_missing,
+        ]);
+ 
+        return $success;
+
+    } catch (PDOException $e) {
+        return [
+            'status' => false,
+            'error' => $e->getMessage()
+        ];
+    }
+}
+public function donate($id, $donate_type, $amount, $ref) {
+    try {
+        $stmt = $this->conn->prepare("
+            INSERT INTO donate 
+            (owner_id, donate_type, amount, ref) 
+            VALUES 
+            (:id, :donate_type, :amount, :ref)
+        ");
+
+        $success = $stmt->execute([
+            'id' => $id,
+            'donate_type' => $donate_type,
+            'amount' => $amount,
+            'ref' => $ref
+        ]);
+
+        return $success;
+
+    } catch (PDOException $e) {
+        return [
+            'status' => false,
+            'error' => $e->getMessage()
+        ];
+    }
+}
+
+
+
+
+}
+?>
