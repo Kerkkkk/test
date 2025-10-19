@@ -1,0 +1,239 @@
+import 'package:flutter/material.dart';
+import 'package:pawconnect/api/api.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:pawconnect/dashboard/dashboard.dart';
+import 'dart:io';
+
+
+class DonationScreen extends StatefulWidget {
+  const DonationScreen({super.key});
+
+  @override
+  State<DonationScreen> createState() => _DonationScreenState();
+}
+
+class _DonationScreenState extends State<DonationScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _amountController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  bool _isLoading = false;
+
+  String _selectedBank = '';
+  int userId = 0;
+
+  Future<void> _donate() async {
+    final prefs = await SharedPreferences.getInstance();
+     userId = prefs.getInt('user_id') ?? 0;
+    final String userIdStr = userId.toString();
+
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _isLoading = true);
+
+
+
+      debugPrint(userIdStr);
+      debugPrint(_selectedBank);
+      debugPrint(_amountController.text.trim());
+      debugPrint(_passwordController.text.trim());
+
+      final apiService = ApiService();
+      final data = await apiService.donate(
+        id: userIdStr,
+        donate_type: _selectedBank,
+        amount: _amountController.text.trim(),
+        ref: _passwordController.text.trim(),
+      );
+
+
+    if(data){
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Pet added successfully!")),
+      );
+
+      await Future.delayed(const Duration(seconds: 2));
+      setState(() => _isLoading = false);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      );
+    }else{
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Something Went Wrong, Please try again.")),
+      );
+    }
+    
+  }
+
+  InputDecoration _inputDecoration(String label, {String? hint}) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      filled: true,
+      fillColor: Colors.grey.shade100,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Donate'),
+        backgroundColor: Colors.blueAccent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.blueAccent, Colors.lightBlueAccent],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text(
+                'Support Us',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Enter your details below to donate safely',
+                style: TextStyle(color: Colors.white70, fontSize: 16),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 40),
+
+              // Form Card
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: const [
+                    BoxShadow(
+                        color: Colors.black26,
+                        blurRadius: 10,
+                        offset: Offset(0, 4))
+                  ],
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      DropdownButtonFormField<String>(
+                        value: _selectedBank.isEmpty ? null : _selectedBank,
+                        decoration: _inputDecoration("Donation Type"),
+                        items: const [
+                          DropdownMenuItem(value: 'UNION BANK', child: Text("UNION BANK")),
+                          DropdownMenuItem(value: 'BDO', child: Text("BDO")),
+                          DropdownMenuItem(value: 'PNB', child: Text("PNB")),
+                          DropdownMenuItem(value: 'CHINA BANK', child: Text("CHINA BANK")),
+                          DropdownMenuItem(value: 'GCASH', child: Text("GCASH")),
+                          DropdownMenuItem(value: 'BITCOIN', child: Text("BITCOIN")),
+                        ],
+                        onChanged: (value) {
+                          setState(() => _selectedBank = value!);
+                        },
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please select a donation type';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      TextFormField(
+                        controller: _amountController,
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.attach_money),
+                          labelText: 'Amount',
+                          border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12)),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter amount';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 20),
+
+                      TextFormField(
+                        controller: _passwordController,
+                        obscureText: false,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.lock),
+                          labelText: 'Reference Number ###',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter OTP or reference number';
+                          } else if (value.length < 6) {
+                            return 'Must be at least 6 characters';
+                          }
+                          return null; // ✅ valid input
+                        },
+                      ),
+
+                      const SizedBox(height: 30),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : () async{
+                            await _donate();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            backgroundColor:
+                                _isLoading ? Colors.grey : Colors.blueAccent,
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 3,
+                                  ),
+                                )
+                              : const Text(
+                                  'Donate Now',
+                                  style: TextStyle(fontSize: 18),
+                                ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
