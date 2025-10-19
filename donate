@@ -1,0 +1,10 @@
+<br />
+<b>Fatal error</b>: Uncaught ArgumentCountError: Too few arguments to function AuthController::reg(), 4 passed in
+/srv/disk25/4694805/www/pawconnect.atwebpages.com/Web/api/donate.php on line 21 and exactly 6 expected in
+/srv/disk25/4694805/www/pawconnect.atwebpages.com/Web/controllers/AuthController.php:39
+Stack trace:
+#0 /srv/disk25/4694805/www/pawconnect.atwebpages.com/Web/api/donate.php(21): AuthController-&gt;reg('5', 'UNION BANK',
+'5555', '123123123')
+#1 {main}
+thrown in <b>/srv/disk25/4694805/www/pawconnect.atwebpages.com/Web/controllers/AuthController.php</b> on line
+<b>39</b><br />
